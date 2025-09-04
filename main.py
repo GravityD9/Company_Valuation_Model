@@ -1,5 +1,3 @@
-import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from dcf_model import forecast_fcf, calculate_dcf
 from fetch_data import get_financials, get_stock_info
