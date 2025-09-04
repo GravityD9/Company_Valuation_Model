@@ -25,6 +25,11 @@ def safe_get(df, keywords, default=0):
 ticker = "INFY.NS"
 info, income_statement, balance_sheet, cashflow = get_financials(ticker)
 
+# --- DEBUG: Show available cashflow columns ---
+print("Available Cashflow Columns:")
+print(cashflow.columns.tolist())
+print("==================================================\n")
+
 print("\n================ COMPANY OVERVIEW ================")
 print(f"Company: {info.get('longName', 'N/A')}")
 print(f"Market Cap: ₹ {info.get('marketCap', 0):,.0f}")
@@ -48,8 +53,15 @@ print("==================================================\n")
 
 # --- Step 3: Forecast Free Cash Flows (DCF) ---
 growth_rate = 0.08  # assumed 8% growth
-fcf = forecast_fcf(revenue, growth_rate, years=5)
 
+# --- Extract Depreciation & Working Capital ---
+depreciation = safe_get(cashflow, ["depreciation", "depreciation_and_amortization"])
+change_in_wc = safe_get(cashflow, ["change_in_working_capital", "changes_in_working_capital"])
+
+print(f"Depreciation & Amortization: ₹ {depreciation:,.0f}")
+print(f"Change in Working Capital:   ₹ {change_in_wc:,.0f}")
+
+fcf = forecast_fcf(revenue, growth_rate, depreciation, change_in_wc, years=5)
 dcf_value = calculate_dcf(fcf, wacc=0.10, terminal_growth=0.03)
 
 print("--- Discounted Cash Flow (DCF) Valuation ---")
