@@ -1,6 +1,6 @@
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
-print("PYTHONPATH:", sys.path)
+
 from dcf_model import forecast_fcf, calculate_dcf
 from fetch_data import get_financials, get_stock_info
 from comparables_model import get_peer_multiples
@@ -8,20 +8,18 @@ from visualize import plot_valuation_results
 from utils import calculate_wacc
 import numpy as np
 
+# --- Step 1: Fetch Company Data ---
+ticker = "INFY.NS"
+info, income_statement, balance_sheet, cashflow = get_financials(ticker)
 
-if __name__ == "__main__":
-    # Example: Infosys
-    ticker = "INFY.NS"
-    income_stmt, balance_sheet, cashflow = get_financials(ticker)
-    info = get_stock_info(ticker)
+print(f"\nCompany: {info['longName']}")
+print(f"Market Cap: {info['marketCap']}\n")
 
-    print("Company:", info.get("shortName"))
-    print("Market Cap:", info.get("marketCap"))
-    print("\nIncome Statement Sample:\n", income_stmt.head())
+print("Income Statement Sample:")
+print(income_statement.head())
+print()
 
-    # Example inputs for DCF
-    net_income = income_stmt["Net Income"].iloc[0]
-    # Find a suitable CAPEX column (different companies have different names in Yahoo Finance)
+# --- Step 2: Handle CAPEX column dynamically ---
 capex_col = None
 for col in cashflow.columns:
     if "Capex" in col or "Capital" in col:
@@ -29,30 +27,41 @@ for col in cashflow.columns:
         break
 
 if capex_col:
+    print(f"⚡ Using CAPEX column: {capex_col}")
     capex = cashflow[capex_col].iloc[0]
 else:
     print("⚠️ Warning: No CAPEX column found in cashflow data, using 0 as fallback.")
     capex = 0
-    depreciation = cashflow["Depreciation"].iloc[0]
-    change_in_wc = 0  # Simplified assumption
 
-    fcf_forecast = forecast_fcf(net_income, capex, depreciation, change_in_wc, years=5, growth_rate=0.06)
-    wacc = calculate_wacc()
-    terminal_growth = 0.03
+# --- Step 3: Forecast Free Cash Flows (DCF) ---
+revenue = income_statement["Total Revenue"].iloc[0]
+growth_rate = 0.08  # assumed 8% growth
+fcf = forecast_fcf(revenue, growth_rate, years=5)
 
-    dcf_value = calculate_dcf(fcf_forecast, wacc, terminal_growth)
-    print(f"\nDCF Enterprise Value: {dcf_value:,.2f}")
+dcf_value = calculate_dcf(fcf, wacc=0.10, terminal_growth=0.03)
 
-    # Comparables valuation
-    peers = ["TCS.NS", "WIPRO.NS", "HCLTECH.NS"]
-    peer_multiples = get_peer_multiples(peers)
-    print("\nPeer Multiples:", peer_multiples)
+print("\n--- Discounted Cash Flow (DCF) Valuation ---")
+print("Forecasted Free Cash Flows (next 5 years):", fcf)
+print("DCF Valuation: ₹", round(dcf_value, 2))
 
-    # Aggregate results
-    results = {
-        "DCF": dcf_value,
-        "Peer Avg (P/E)": np.nanmean([v["P/E"] for v in peer_multiples.values() if v["P/E"]]),
-        "Peer Avg (EV/EBITDA)": np.nanmean([v["EV/EBITDA"] for v in peer_multiples.values() if v["EV/EBITDA"]])
-    }
+# --- Step 4: Comparables Valuation ---
+pe_val, ev_ebitda_val = get_peer_multiples(ticker)
 
-    plot_valuation_results(results)
+print("\n--- Comparable Multiples Valuation ---")
+print("P/E Multiple Valuation: ₹", round(pe_val, 2))
+print("EV/EBITDA Valuation:   ₹", round(ev_ebitda_val, 2))
+
+# --- Step 5: Weighted Average Cost of Capital ---
+wacc = calculate_wacc()
+print("\n--- Weighted Average Cost of Capital (WACC) ---")
+print("Estimated WACC:", round(wacc * 100, 2), "%")
+
+# --- Step 6: Final Valuation Range ---
+valuation_range = (min(dcf_value, pe_val, ev_ebitda_val),
+                   max(dcf_value, pe_val, ev_ebitda_val))
+
+print(f"\nFinal Valuation Range: ₹ {round(valuation_range[0], 2)} – ₹ {round(valuation_range[1], 2)}")
+print("Market Cap (Current): ₹", info["marketCap"])
+
+# --- Step 7: Plot Results ---
+plot_valuation_results(dcf_value, pe_val, ev_ebitda_val, info["marketCap"])
