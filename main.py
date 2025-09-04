@@ -70,11 +70,27 @@ print(f"DCF Valuation: ₹ {dcf_value:,.0f}")
 print("==================================================\n")
 
 # --- Step 4: Comparable Multiples Valuation ---
-pe_val, ev_ebitda_val = get_peer_multiples(ticker)
+avg_pe, avg_ev_ebitda = get_peer_multiples()
+
+# Infosys Net Income & EBITDA (from financials)
+net_income = safe_get(income_statement, ["net_income"])
+ebitda = safe_get(income_statement, ["ebitda", "normalized_ebitda"])
+
+# Infosys Enterprise Value = Market Cap + Debt - Cash
+market_cap = info.get("marketCap", 0)
+total_debt = safe_get(balance_sheet, ["total_debt"], default=0)
+cash = safe_get(balance_sheet, ["cash"], default=0)
+enterprise_value = market_cap + total_debt - cash
+
+# Apply multiples
+pe_valuation = net_income * avg_pe
+ev_ebitda_valuation = ebitda * avg_ev_ebitda
 
 print("--- Comparable Multiples Valuation ---")
-print(f"P/E Multiple Valuation:   ₹ {pe_val:,.0f}")
-print(f"EV/EBITDA Valuation:      ₹ {ev_ebitda_val:,.0f}")
+print(f"Peer Avg P/E Multiple:       {avg_pe:.2f}x")
+print(f"Peer Avg EV/EBITDA Multiple: {avg_ev_ebitda:.2f}x")
+print(f"P/E Multiple Valuation:      ₹ {pe_valuation:,.0f}")
+print(f"EV/EBITDA Valuation:         ₹ {ev_ebitda_valuation:,.0f}")
 print("==================================================\n")
 
 # --- Step 5: Weighted Average Cost of Capital ---
