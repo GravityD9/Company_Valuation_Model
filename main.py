@@ -1,9 +1,13 @@
-from src.fetch_data import get_financials, get_stock_info
-from src.dcf_model import forecast_fcf, calculate_dcf
-from src.comparables_model import get_peer_multiples
-from src.visualize import plot_valuation_results
-from src.utils import calculate_wacc
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
+from dcf_model import forecast_fcf, calculate_dcf
+from fetch_data import get_financials, get_stock_info
+from comparables_model import get_peer_multiples
+from visualize import plot_valuation_results
+from utils import calculate_wacc
 import numpy as np
+
 
 if __name__ == "__main__":
     # Example: Infosys
