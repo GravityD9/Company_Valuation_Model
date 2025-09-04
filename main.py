@@ -21,7 +21,18 @@ if __name__ == "__main__":
 
     # Example inputs for DCF
     net_income = income_stmt["Net Income"].iloc[0]
-    capex = cashflow["Capital Expenditures"].iloc[0]
+    # Find a suitable CAPEX column (different companies have different names in Yahoo Finance)
+capex_col = None
+for col in cashflow.columns:
+    if "Capex" in col or "Capital" in col:
+        capex_col = col
+        break
+
+if capex_col:
+    capex = cashflow[capex_col].iloc[0]
+else:
+    print("⚠️ Warning: No CAPEX column found in cashflow data, using 0 as fallback.")
+    capex = 0
     depreciation = cashflow["Depreciation"].iloc[0]
     change_in_wc = 0  # Simplified assumption
 
