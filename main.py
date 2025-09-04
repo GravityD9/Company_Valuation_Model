@@ -6,7 +6,6 @@ from fetch_data import get_financials, get_stock_info
 from comparables_model import get_peer_multiples
 from visualize import plot_valuation_results
 from utils import calculate_wacc
-import numpy as np
 
 # --- Helper function for safe column lookup ---
 def safe_get(df, keywords, default=0):
@@ -16,7 +15,7 @@ def safe_get(df, keywords, default=0):
     """
     for col in df.columns:
         for kw in keywords:
-            if kw in col:
+            if kw.lower() in col.lower():
                 return df[col].iloc[0]
     print(f"⚠️ Warning: none of {keywords} found in DataFrame. Using default {default}")
     return default
@@ -40,7 +39,7 @@ print("==================================================\n")
 
 # --- Step 2: Extract Key Financials ---
 revenue = safe_get(income_statement, ["total_revenue", "operating_revenue"])
-capex = safe_get(cashflow, ["capital_expenditures"])
+capex = safe_get(cashflow, ["capital_expenditure", "capital_expenditures"])
 ebit = safe_get(income_statement, ["ebit", "operating_income"])
 net_income = safe_get(income_statement, ["net_income"])
 
@@ -73,13 +72,12 @@ print("==================================================\n")
 avg_pe, avg_ev_ebitda = get_peer_multiples()
 
 # Infosys Net Income & EBITDA (from financials)
-net_income = safe_get(income_statement, ["net_income"])
 ebitda = safe_get(income_statement, ["ebitda", "normalized_ebitda"])
 
 # Infosys Enterprise Value = Market Cap + Debt - Cash
 market_cap = info.get("marketCap", 0)
-total_debt = safe_get(balance_sheet, ["total_debt"], default=0)
-cash = safe_get(balance_sheet, ["cash"], default=0)
+total_debt = safe_get(balance_sheet, ["total_debt", "totaldebt"], default=0)
+cash = safe_get(balance_sheet, ["cash", "cash_and_cash_equivalents"], default=0)
 enterprise_value = market_cap + total_debt - cash
 
 # Apply multiples
@@ -100,13 +98,18 @@ print(f"Estimated WACC: {wacc * 100:.2f}%")
 print("==================================================\n")
 
 # --- Step 6: Final Valuation Range ---
-valuation_range = (min(dcf_value, pe_val, ev_ebitda_val),
-                   max(dcf_value, pe_val, ev_ebitda_val))
+valuation_range = (
+    min(dcf_value, pe_valuation, ev_ebitda_valuation),
+    max(dcf_value, pe_valuation, ev_ebitda_valuation)
+)
 
 print("--- Final Valuation Summary ---")
-print(f"Valuation Range: ₹ {valuation_range[0]:,.0f} – ₹ {valuation_range[1]:,.0f}")
-print(f"Current Market Cap: ₹ {info.get('marketCap', 0):,.0f}")
+print(f"DCF Valuation:            ₹ {dcf_value:,.0f}")
+print(f"P/E Multiple Valuation:   ₹ {pe_valuation:,.0f}")
+print(f"EV/EBITDA Valuation:      ₹ {ev_ebitda_valuation:,.0f}")
+print(f"Valuation Range:          ₹ {valuation_range[0]:,.0f} – ₹ {valuation_range[1]:,.0f}")
+print(f"Current Market Cap:       ₹ {market_cap:,.0f}")
 print("==================================================\n")
 
 # --- Step 7: Plot Results ---
-plot_valuation_results(dcf_value, pe_val, ev_ebitda_val, info["marketCap"])
+plot_valuation_results(dcf_value, pe_valuation, ev_ebitda_valuation, market_cap)
